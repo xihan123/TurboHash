@@ -247,7 +247,7 @@ impl HashCachePool {
     }
 
     /// 运行数据库迁移
-    fn run_migrations(conn: &mut Connection, current_version: u32) -> HashResult<()> {
+    fn run_migrations(conn: &mut Connection, _current_version: u32) -> HashResult<()> {
         let tx = conn.unchecked_transaction().with_cache_error(
             CacheOperation::Migrate,
             "failed to begin migration transaction",
