@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.3](https://github.com/xihan123/TurboHash/compare/v1.1.2...v1.1.3) (2026-01-19)
+
+
+### Bug Fixes
+
+* **ci:** resolve Windows artifact upload issue and update macOS runner ([d020567](https://github.com/xihan123/TurboHash/commit/d02056709abedd7da50fa3a4076301b40dbc6654))
+
 ## [1.1.2](https://github.com/xihan123/TurboHash/compare/v1.1.1...v1.1.2) (2026-01-19)
 
 
