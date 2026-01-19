@@ -1,0 +1,62 @@
+# Rust 编译产物
+/target/
+**/*.rs.bk
+*.pdb
+
+# Cargo 锁定文件（应用程序通常提交，库不提交）
+# Cargo.lock
+
+# 可执行文件
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+Hash.exe
+
+# IDE 和编辑器
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# 操作系统文件
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# 日志文件
+*.log
+
+# 临时文件
+*.tmp
+*.temp
+
+# 缓存数据库（运行时生成）
+hash_cache.db
+hash_cache.db-shm
+hash_cache.db-wal
+*.db
+*.db-shm
+*.db-wal
+
+# 测试覆盖率
+tarpaulin-report.html
+cobertura.xml
+lcov.info
+
+# 备份文件
+*.bak
+*.backup
+
+# 构建脚本产物
+cargo-clean.bat

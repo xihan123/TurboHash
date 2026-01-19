@@ -1,0 +1,77 @@
+[package]
+name = "TurboHash"
+version = "0.1.0"
+edition = "2024"
+license = "GPL-3.0"
+
+[dependencies]
+# GUI框架 - 禁用wgpu以减小体积
+eframe = { version = "0.33", default-features = false, features = ["default_fonts", "glow"] }
+egui = { version = "0.33", default-features = false, features = ["bytemuck"] }
+egui_extras = { version = "0.33", default-features = false, features = [] }
+
+# 哈希算法
+crc32fast = "1.5"
+md-5 = "0.10"
+ring = "0.17"
+xxhash-rust = { version = "0.8", features = ["xxh3"] }
+
+# SQLite数据库
+rusqlite = { version = "0.38.0", default-features = false, features = ["bundled"] }
+r2d2 = "0.8"
+r2d2_sqlite = "0.32"
+
+# 文件对话框
+rfd = { version = "0.17", default-features = false }
+
+# 并行处理
+rayon = "1.11"
+
+# 文件IO
+memmap2 = "0.9"
+
+# 线程通信
+crossbeam-channel = "0.5"
+
+# 工具库
+humansize = "2.1"
+hex = "0.4"
+dunce = "1.0"
+
+# 目录遍历
+walkdir = "2"
+
+# 系统信息检测
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_System_SystemInformation"] }
+
+num_cpus = "1.16"
+
+[dev-dependencies]
+tempfile = "3.24"
+
+[profile.release]
+opt-level = "z"
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[profile.dev]
+opt-level = 1
+debug = true
+overflow-checks = true
+
+[lints]
+# Workspace-level lints for all targets
+rust = { unused_crate_dependencies = "warn", unused_extern_crates = "warn", missing_docs = "warn" }
+
+[lints.clippy]
+# Performance - deny
+perf = "deny"
+# Correctness - deny
+correctness = "deny"
+# Style warnings
+style = "warn"
+# Complexity warnings
+cognitive_complexity = "warn"

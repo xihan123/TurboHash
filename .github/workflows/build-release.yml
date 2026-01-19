@@ -1,0 +1,378 @@
+name: Build Release
+
+on:
+  push:
+    tags:
+    - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g., v1.0.0)'
+        required: true
+        type: string
+      draft:
+        description: 'Create as draft'
+        required: false
+        type: boolean
+        default: false
+      pre_release:
+        description: 'Mark as pre-release'
+        required: false
+        type: boolean
+        default: false
+  release:
+    types: [ created ]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  test:
+    name: Test and Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-registry-
+
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-index-
+
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}-x86_64-unknown-linux-gnu
+          restore-keys: |
+            ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}-
+            ${{ runner.os }}-cargo-build-target-
+
+      - name: Run tests
+        run: cargo test --release
+
+      - name: Run clippy
+        run: cargo clippy -- -D warnings
+
+      - name: Check formatting
+        run: cargo fmt -- --check
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
+
+      - name: Run security audit
+        run: cargo audit
+
+  build:
+    name: Build on ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    needs: test
+    strategy:
+      matrix:
+        include:
+        - target: x86_64-pc-windows-msvc
+          runner: windows-latest
+          artifact: TurboHash-windows-x64.exe
+          strip: true
+        - target: x86_64-apple-darwin
+          runner: macos-13
+          artifact: TurboHash-macos-x64
+          strip: true
+        - target: aarch64-apple-darwin
+          runner: macos-latest
+          artifact: TurboHash-macos-arm64
+          strip: true
+        - target: x86_64-unknown-linux-gnu
+          runner: ubuntu-latest
+          artifact: TurboHash-linux-x64
+          strip: true
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: ${{ matrix.target }}
+
+    - name: Cache cargo registry
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/registry
+        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-registry-
+
+    - name: Cache cargo index
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/git
+        key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-index-
+
+    - name: Cache cargo build
+      uses: actions/cache@v4
+      with:
+        path: target
+        key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}-${{ matrix.target }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}-
+          ${{ runner.os }}-cargo-build-target-
+
+    - name: Install cross (Linux only)
+      if: matrix.target == 'x86_64-unknown-linux-gnu'
+      run: cargo install cross --git https://github.com/cross-rs/cross
+
+    - name: Build release binary
+      run: |
+        if [ "${{ matrix.target }}" == "x86_64-unknown-linux-gnu" ]; then
+          cross build --release --target ${{ matrix.target }}
+        else
+          cargo build --release --target ${{ matrix.target }}
+        fi
+      shell: bash
+
+    - name: Strip symbols (Linux/macOS)
+      if: matrix.strip && runner.os != 'Windows'
+      run: |
+        if [ "${{ runner.os }}" == "macOS" ]; then
+          strip -x target/${{ matrix.target }}/release/TurboHash
+        else
+          strip -s target/${{ matrix.target }}/release/TurboHash
+        fi
+      shell: bash
+
+    - name: Strip symbols (Windows)
+      if: matrix.strip && runner.os == 'Windows'
+      run: |
+        # Windows binaries are already stripped by cargo's strip = true in profile
+        copy "target\${{ matrix.target }}\release\TurboHash.exe" "${{ matrix.artifact }}"
+      shell: pwsh
+
+    - name: Prepare artifact
+      run: |
+        mkdir -p artifacts
+
+        if [ "${{ runner.os }}" == "Windows" ]; then
+          cp "target/${{ matrix.target }}/release/TurboHash.exe" "artifacts/${{ matrix.artifact }}"
+        elif [ "${{ runner.os }}" == "macOS" ]; then
+          # Handle macOS universal binary or single arch
+          cp target/${{ matrix.target }}/release/TurboHash artifacts/${{ matrix.artifact }}
+          chmod +x artifacts/${{ matrix.artifact }}
+        else
+          cp target/${{ matrix.target }}/release/TurboHash artifacts/${{ matrix.artifact }}
+          chmod +x artifacts/${{ matrix.artifact }}
+        fi
+      shell: bash
+
+    - name: Cache UPX (macOS)
+      if: runner.os == 'macOS'
+      uses: actions/cache@v4
+      with:
+        path: /usr/local/bin/upx
+        key: upx-macos-${{ hashFiles('/usr/local/bin/upx') }}
+
+    - name: Install UPX (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        if [ ! -f /usr/local/bin/upx ]; then
+          brew install upx
+        fi
+
+    - name: Compress with UPX (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        cp artifacts/${{ matrix.artifact }} artifacts/${{ matrix.artifact }}.uncompressed
+        upx --best --lzma artifacts/${{ matrix.artifact }}
+        # Rename compressed version
+        mv artifacts/${{ matrix.artifact }} artifacts/${{ matrix.artifact }}.compressed
+        # Restore uncompressed version
+        mv artifacts/${{ matrix.artifact }}.uncompressed artifacts/${{ matrix.artifact }}
+
+    - name: Compress with UPX (Linux/Windows)
+      if: runner.os != 'macOS'
+      uses: crazy-max/ghaction-upx@v3
+      with:
+        version: latest
+        files: |
+          artifacts/${{ matrix.artifact }}
+        args: --best --lzma
+
+    - name: Create compressed copy (Linux/Windows)
+      if: runner.os != 'macOS'
+      run: |
+        if [ "${{ runner.os }}" == "Windows" ]; then
+          # Windows: TurboHash-windows-x64.exe → TurboHash-windows-x64-compressed.exe
+          artifact="${{ matrix.artifact }}"
+          compressed_name="${artifact%.exe}-compressed.exe"
+          cp "artifacts/${artifact}" "artifacts/${compressed_name}"
+        else
+          # Linux: Append .compressed suffix
+          cp artifacts/${{ matrix.artifact }} artifacts/${{ matrix.artifact }}.compressed
+        fi
+      shell: bash
+
+    - name: Upload artifact (uncompressed)
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.artifact }}
+        path: artifacts/${{ matrix.artifact }}
+        retention-days: 90
+
+    - name: Upload artifact (compressed) - Windows
+      if: runner.os == 'Windows'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.artifact }}-compressed
+        path: artifacts/${{ matrix.artifact }}-compressed.exe
+        retention-days: 90
+
+    - name: Upload artifact (compressed) - Linux
+      if: runner.os == 'Linux'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.artifact }}.compressed
+        path: artifacts/${{ matrix.artifact }}.compressed
+        retention-days: 90
+
+    - name: Upload artifact (compressed) - macOS
+      if: runner.os == 'macOS'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.artifact }}.compressed
+        path: artifacts/${{ matrix.artifact }}.compressed
+        retention-days: 90
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+
+    - name: Display structure of downloaded files
+      run: ls -R artifacts
+      shell: bash
+
+    - name: Generate SHA256 checksums
+      run: |
+        cd artifacts
+        find . -type f -name "TurboHash-*" | sort | xargs sha256sum > SHA256SUMS.txt
+        cat SHA256SUMS.txt
+      shell: bash
+
+    - name: Upload SHA256 checksums
+      uses: actions/upload-artifact@v4
+      with:
+        name: SHA256SUMS
+        path: artifacts/SHA256SUMS.txt
+        retention-days: 90
+
+    - name: Prepare release tag
+      id: tag
+      run: |
+        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+          echo "tag=${{ inputs.version }}" >> $GITHUB_OUTPUT
+        elif [ "${{ github.event_name }}" == "push" ]; then
+          echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        elif [ "${{ github.event_name }}" == "release" ]; then
+          echo "tag=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+        else
+          echo "tag=latest" >> $GITHUB_OUTPUT
+        fi
+      shell: bash
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ steps.tag.outputs.tag }}
+        name: TurboHash ${{ steps.tag.outputs.tag }}
+        draft: ${{ github.event_name == 'workflow_dispatch' && inputs.draft || false }}
+        prerelease: ${{ github.event_name == 'workflow_dispatch' && inputs.pre_release || false }}
+        generate_release_notes: true
+        files: |
+          artifacts/TurboHash-*
+          artifacts/SHA256SUMS.txt
+        body: |
+          ## TurboHash ${{ steps.tag.outputs.tag }}
+
+          ### 下载
+
+          | 平台 | 二进制文件 | 大小 | 说明 |
+          |----------|--------|------|------|
+          | Windows x64 | `TurboHash-windows-x64.exe` | ~5MB | 未压缩版本 |
+          | Windows x64 | `TurboHash-windows-x64-compressed.exe` | ~1.5-2MB | UPX压缩版本 |
+          | macOS Intel | `TurboHash-macos-x64` / `.compressed` | ~5MB / ~1.5-2MB | |
+          | macOS ARM64 | `TurboHash-macos-arm64` / `.compressed` | ~5MB / ~1.5-2MB | |
+          | Linux x64 | `TurboHash-linux-x64` / `.compressed` | ~5MB / ~1.5-2MB | |
+
+          ### UPX 压缩说明
+
+          压缩版使用 UPX (Ultimate Packer for eXecutables) 压缩，体积减少 50-70%。
+
+          **特点**:
+          - 直接运行，无需解压
+          - 首次运行时会自动解压到内存
+          - 运行性能与未压缩版相同
+
+          **如需解压**:
+          ```bash
+          upx -d TurboHash-*.compressed
+          ```
+
+          ### 校验
+
+          ```bash
+          # 下载 SHA256SUMS.txt
+          # 验证下载的二进制文件：
+          sha256sum -c SHA256SUMS.txt
+          ```
+
+          ### 快速开始
+
+          **Windows:**
+          ```powershell
+          .\TurboHash-windows-x64.exe
+          # 或使用压缩版
+          .\TurboHash-windows-x64-compressed.exe
+          ```
+
+          **macOS/Linux:**
+          ```bash
+          chmod +x TurboHash-*
+          ./TurboHash-*
+          # 或使用压缩版
+          ./TurboHash-*.compressed
+          ```
+
+          ### 更新内容
+
+          详见 [CHANGELOG.md](CHANGELOG.md) 查看详细更改记录。
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
