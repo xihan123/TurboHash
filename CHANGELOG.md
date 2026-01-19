@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1](https://github.com/xihan123/TurboHash/compare/v1.2.0...v1.2.1) (2026-01-19)
+
+
+### Bug Fixes
+
+* **ci:** 修复构建工作流中的文件压缩逻辑 ([2a73d08](https://github.com/xihan123/TurboHash/commit/2a73d08c585dc48d680588f64b402a51066d1697))
+
 ## [1.2.0](https://github.com/xihan123/TurboHash/compare/v1.1.3...v1.2.0) (2026-01-19)
 
 
