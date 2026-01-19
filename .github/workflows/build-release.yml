@@ -148,7 +148,7 @@ jobs:
       if: runner.os == 'macOS'
       run: |
         cp artifacts/${{ matrix.artifact }} artifacts/${{ matrix.artifact }}.uncompressed
-        upx --best --lzma artifacts/${{ matrix.artifact }}
+        upx --best --lzma --force-macos artifacts/${{ matrix.artifact }}
         # Rename compressed version
         mv artifacts/${{ matrix.artifact }} artifacts/${{ matrix.artifact }}.compressed
         # Restore uncompressed version
