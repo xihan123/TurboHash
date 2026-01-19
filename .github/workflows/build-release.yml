@@ -30,18 +30,13 @@ env:
 jobs:
   test:
     name: Test and Lint
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
-
-      - name: Install X11 dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libx11-dev libxext-dev libxrender-dev libxrandr-dev
 
       - name: Cache cargo registry
         uses: actions/cache@v4
@@ -63,13 +58,13 @@ jobs:
         uses: actions/cache@v4
         with:
           path: target
-          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}-x86_64-unknown-linux-gnu
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}-x86_64-pc-windows-msvc
           restore-keys: |
             ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}-
             ${{ runner.os }}-cargo-build-target-
 
       - name: Run tests
-        run: xvfb-run -a cargo test --release
+        run: cargo test --release
 
       - name: Run clippy
         run: cargo clippy -- -D warnings
