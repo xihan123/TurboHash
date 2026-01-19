@@ -96,47 +96,6 @@ impl fmt::Display for HashError {
 
 impl std::error::Error for HashError {}
 
-impl HashError {
-    /// 返回用户友好的错误摘要（用于 GUI 显示）
-    pub fn user_message(&self) -> String {
-        match self {
-            HashError::Io(_err, path) => {
-                format!(
-                    "无法访问文件: {}",
-                    path.file_name()
-                        .and_then(|n| n.to_str())
-                        .unwrap_or("未知文件")
-                )
-            }
-            HashError::FontLoadFailed(msg) => {
-                format!("字体加载失败: {}", msg)
-            }
-            HashError::Cache {
-                operation, kind, ..
-            } => {
-                format!("缓存操作失败: {} - {}", operation, kind)
-            }
-            HashError::SystemResource(msg) => {
-                format!("系统资源错误: {}", msg)
-            }
-            #[cfg(target_pointer_width = "32")]
-            HashError::FileTooLarge(path) => {
-                format!(
-                    "文件过大（32位系统限制）: {}",
-                    path.file_name()
-                        .and_then(|n| n.to_str())
-                        .unwrap_or("未知文件")
-                )
-            }
-        }
-    }
-
-    /// 返回详细错误信息（用于日志记录）
-    pub fn detailed_message(&self) -> String {
-        self.to_string()
-    }
-}
-
 impl From<io::Error> for HashError {
     fn from(err: io::Error) -> Self {
         HashError::Io(err, PathBuf::from("unknown"))
