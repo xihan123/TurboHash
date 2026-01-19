@@ -38,6 +38,11 @@ jobs:
         with:
           components: rustfmt, clippy
 
+      - name: Install X11 dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev libxext-dev libxrender-dev libxrandr-dev
+
       - name: Cache cargo registry
         uses: actions/cache@v4
         with:
@@ -64,7 +69,7 @@ jobs:
             ${{ runner.os }}-cargo-build-target-
 
       - name: Run tests
-        run: cargo test --release
+        run: xvfb-run -a cargo test --release
 
       - name: Run clippy
         run: cargo clippy -- -D warnings
