@@ -39,7 +39,7 @@ jobs:
           artifact: TurboHash-windows-x64.exe
           strip: true
         - target: x86_64-apple-darwin
-          runner: macos-13
+          runner: macos-15-intel
           artifact: TurboHash-macos-x64
           strip: true
         - target: aarch64-apple-darwin
@@ -171,11 +171,14 @@ jobs:
           artifact="${{ matrix.artifact }}"
           compressed_name="${artifact%.exe}-compressed.exe"
           cp "artifacts/${artifact}" "artifacts/${compressed_name}"
+          echo "compressed_file=$compressed_name" >> $GITHUB_OUTPUT
         else
           # Linux: Append .compressed suffix
           cp artifacts/${{ matrix.artifact }} artifacts/${{ matrix.artifact }}.compressed
+          echo "compressed_file=${{ matrix.artifact }}.compressed" >> $GITHUB_OUTPUT
         fi
       shell: bash
+      id: compressed-name
 
     - name: Upload artifact (uncompressed)
       uses: actions/upload-artifact@v4
@@ -189,7 +192,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.artifact }}-compressed
-        path: artifacts/${{ matrix.artifact }}-compressed.exe
+        path: artifacts/${{ steps.compressed-name.outputs.compressed_file }}
         retention-days: 90
 
     - name: Upload artifact (compressed) - Linux
