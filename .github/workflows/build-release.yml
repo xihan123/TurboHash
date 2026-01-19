@@ -224,6 +224,8 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         path: artifacts
+        pattern: TurboHash-*
+        merge-multiple: true
 
     - name: Display structure of downloaded files
       run: ls -R artifacts
@@ -235,13 +237,6 @@ jobs:
         find . -type f -name "TurboHash-*" | sort | xargs sha256sum > SHA256SUMS.txt
         cat SHA256SUMS.txt
       shell: bash
-
-    - name: Upload SHA256 checksums
-      uses: actions/upload-artifact@v4
-      with:
-        name: SHA256SUMS
-        path: artifacts/SHA256SUMS.txt
-        retention-days: 90
 
     - name: Prepare release tag
       id: tag
@@ -266,7 +261,7 @@ jobs:
         prerelease: ${{ github.event_name == 'workflow_dispatch' && inputs.pre_release || false }}
         generate_release_notes: true
         files: |
-          artifacts/TurboHash*
+          artifacts/TurboHash-*
           artifacts/SHA256SUMS.txt
         body: |
           ## TurboHash ${{ steps.tag.outputs.tag }}
