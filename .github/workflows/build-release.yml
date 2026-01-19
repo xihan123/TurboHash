@@ -152,6 +152,12 @@ jobs:
         # Restore uncompressed version
         mv artifacts/${{ matrix.artifact }}.uncompressed artifacts/${{ matrix.artifact }}
 
+    - name: Backup uncompressed original (Linux/Windows)
+      if: runner.os != 'macOS'
+      run: |
+        cp artifacts/${{ matrix.artifact }} artifacts/${{ matrix.artifact }}.uncompressed
+      shell: bash
+
     - name: Compress with UPX (Linux/Windows)
       if: runner.os != 'macOS'
       uses: crazy-max/ghaction-upx@v3
@@ -161,20 +167,22 @@ jobs:
           artifacts/${{ matrix.artifact }}
         args: --best --lzma
 
-    - name: Create compressed copy (Linux/Windows)
+    - name: Create compressed copy and restore uncompressed (Linux/Windows)
       if: runner.os != 'macOS'
       run: |
+        # Move compressed file to compressed name
         if [ "${{ runner.os }}" == "Windows" ]; then
-          # Windows: TurboHash-windows-x64.exe → TurboHash-windows-x64-compressed.exe
           artifact="${{ matrix.artifact }}"
           compressed_name="${artifact%.exe}-compressed.exe"
-          cp "artifacts/${artifact}" "artifacts/${compressed_name}"
+          mv "artifacts/${artifact}" "artifacts/${compressed_name}"
           echo "compressed_file=$compressed_name" >> $GITHUB_OUTPUT
         else
-          # Linux: Append .compressed suffix
-          cp artifacts/${{ matrix.artifact }} artifacts/${{ matrix.artifact }}.compressed
+          mv artifacts/${{ matrix.artifact }} artifacts/${{ matrix.artifact }}.compressed
           echo "compressed_file=${{ matrix.artifact }}.compressed" >> $GITHUB_OUTPUT
         fi
+
+        # Restore uncompressed version
+        mv artifacts/${{ matrix.artifact }}.uncompressed artifacts/${{ matrix.artifact }}
       shell: bash
       id: compressed-name
 
