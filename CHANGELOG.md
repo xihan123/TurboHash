@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.2](https://github.com/xihan123/TurboHash/compare/v1.1.1...v1.1.2) (2026-01-19)
+
+
+### Bug Fixes
+
+* **ci:** add --force-macos flag for UPX compression on macOS ([63e4e7b](https://github.com/xihan123/TurboHash/commit/63e4e7b72a4afe707b8a06b938779ad86102bea0))
+
 ## [1.1.1](https://github.com/xihan123/TurboHash/compare/v1.1.0...v1.1.1) (2026-01-19)
 
 
