@@ -22,7 +22,7 @@ r2d2 = "0.8"
 r2d2_sqlite = "0.32"
 
 # 文件对话框
-rfd = { version = "0.17", default-features = false }
+rfd = { version = "0.17", default-features = false, features = ["gtk3"] }
 
 # 并行处理
 rayon = "1.11"
