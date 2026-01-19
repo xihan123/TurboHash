@@ -89,6 +89,12 @@ jobs:
       if: matrix.target == 'x86_64-unknown-linux-gnu'
       run: cargo install cross --git https://github.com/cross-rs/cross
 
+    - name: Install GUI dependencies (Linux only)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libx11-dev libxext-dev libxrender-dev libxrandr-dev libxkbcommon-dev libwayland-dev
+
     - name: Build release binary
       run: |
         if [ "${{ matrix.target }}" == "x86_64-unknown-linux-gnu" ]; then
