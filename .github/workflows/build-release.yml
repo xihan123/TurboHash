@@ -20,8 +20,6 @@ on:
         required: false
         type: boolean
         default: false
-  release:
-    types: [ created ]
 
 env:
   CARGO_TERM_COLOR: always
@@ -268,7 +266,7 @@ jobs:
         prerelease: ${{ github.event_name == 'workflow_dispatch' && inputs.pre_release || false }}
         generate_release_notes: true
         files: |
-          artifacts/TurboHash-*
+          artifacts/TurboHash*
           artifacts/SHA256SUMS.txt
         body: |
           ## TurboHash ${{ steps.tag.outputs.tag }}
